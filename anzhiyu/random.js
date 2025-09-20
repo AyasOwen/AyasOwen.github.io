@@ -1,3 +1,3 @@
-var posts=["2024/11/20/Acfly相关库的安装/","2024/11/17/T265和D435联合使用/","2024/11/27/PX4开发之旅/","2025/01/14/Windown上python的环境配置/","2025/01/19/stm32之HAL库开发（一）/","2024/11/20/于-orangepi5-plus-上部署-ros1/","2024/11/27/于-orangepi5-plus-上部署-ros2/","2025/01/25/stm32之HAL库开发（二）/","2025/03/09/于-orangepi5-plus-上启用外设引脚/","2025/05/15/PX4飞控调试方案/","2025/05/20/PX4仿真方案/","2025/03/08/Realsense 相机的疑难杂症/"];function toRandomPost(){
+var posts=["2024/11/20/Acfly相关库的安装/","2024/11/17/T265和D435联合使用/","2024/11/27/PX4开发之旅/","2025/01/14/Windown上python的环境配置/","2025/01/19/stm32之HAL库开发（一）/","2024/11/20/于-orangepi5-plus-上部署-ros1/","2024/11/27/于-orangepi5-plus-上部署-ros2/","2025/01/25/stm32之HAL库开发（二）/","2025/03/09/于-orangepi5-plus-上启用外设引脚/","2025/05/15/PX4飞控调试方案/","2025/05/20/PX4仿真方案/","2025/03/08/Realsense 相机的疑难杂症/","2025/09/20/MySQL学习之旅/","2025/09/15/Ros-自动避障导航小车的开发/"];function toRandomPost(){
     pjax.loadUrl('/'+posts[Math.floor(Math.random() * posts.length)]);
   };
