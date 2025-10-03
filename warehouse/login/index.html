@@ -60,7 +60,7 @@
   isHome: false,
   isHighlightShrink: false,
   isToc: true,
-  postUpdate: '2025-10-03 22:33:58',
+  postUpdate: '2025-10-03 22:36:13',
   postMainColor: '',
 }</script><noscript><style type="text/css">
   #nav {
@@ -289,12 +289,11 @@ if (true) {
     #wh-login .wh-hint.ok{color:#0f9d58}
     #wh-login .wh-hint.error{color:#d93025}
     
-
-(function () {
+</style><script>(function () {
   var saved = localStorage.getItem('WH_API_BASE');
   window.WH_API_BASE = (saved && saved.trim()) || "http://127.0.0.1:8000";
 })();
-</style><!-- —— 告警卡（默认隐藏） ——--><div id="wh-guard" style="display:none"><div class="post"><div class="post-cards"><div class="post-card post-card--alert"><button class="banner-button" type="button" onclick="WH&amp;&amp;WH.healthGuard&amp;&amp;WH.healthGuard()"><i class="anzhiyufont anzhiyu-icon-refresh"></i><span class="banner-button-text">重新检测</span></button><h3 class="card-title">服务器未启动</h3><div class="desc">后端未运行或不可达。当前 API：<code class="badge" id="wh-api">--</code></div></div></div></div></div><!-- —— 登录卡（默认隐藏） ——--><div id="wh-login" style="display:none"><div class="post"><div class="post-cards"><div class="post-card post-card--login"><button class="banner-button" type="button" onclick="WH&amp;&amp;WH.login&amp;&amp;WH.login()"><i class="anzhiyufont anzhiyu-icon-arrow-circle-right"></i><span class="banner-button-text">登录</span></button><h3 class="card-title">登录</h3><form class="wh-form" onsubmit="return false;"><input class="wh-input" id="wh_user" type="text" placeholder="用户名"/><input class="wh-input" id="wh_pass" type="password" placeholder="密码"/><p class="wh-hint" id="wh_msg">提示信息会显示在这里</p></form></div></div></div></div><!-- ===== 页面逻辑：健康检测 + 登录 =====--><script>
+</script><!-- —— 告警卡（默认隐藏） ——--><div id="wh-guard" style="display:none"><div class="post"><div class="post-cards"><div class="post-card post-card--alert"><button class="banner-button" type="button" onclick="WH&amp;&amp;WH.healthGuard&amp;&amp;WH.healthGuard()"><i class="anzhiyufont anzhiyu-icon-refresh"></i><span class="banner-button-text">重新检测</span></button><h3 class="card-title">服务器未启动</h3><div class="desc">后端未运行或不可达。当前 API：<code class="badge" id="wh-api">--</code></div></div></div></div></div><!-- —— 登录卡（默认隐藏） ——--><div id="wh-login" style="display:none"><div class="post"><div class="post-cards"><div class="post-card post-card--login"><button class="banner-button" type="button" onclick="WH&amp;&amp;WH.login&amp;&amp;WH.login()"><i class="anzhiyufont anzhiyu-icon-arrow-circle-right"></i><span class="banner-button-text">登录</span></button><h3 class="card-title">登录</h3><form class="wh-form" onsubmit="return false;"><input class="wh-input" id="wh_user" type="text" placeholder="用户名"/><input class="wh-input" id="wh_pass" type="password" placeholder="密码"/><p class="wh-hint" id="wh_msg">提示信息会显示在这里</p></form></div></div></div></div><!-- ===== 页面逻辑：健康检测 + 登录 =====--><script>
     (function(){
       window.WH = window.WH || {};
       const $ = s => document.querySelector(s);
