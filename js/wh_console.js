@@ -23,7 +23,7 @@
   }
   function renderShelves(rows){
     rows = rows || [];
-    // 过滤
+    // === 过滤逻辑 ===
     const fcode = $("#s-filter-code").value.trim().toLowerCase();
     const frow  = $("#s-filter-row").value;
     const fcol  = $("#s-filter-col").value;
@@ -33,17 +33,49 @@
       if(fcol && +r.col_idx !== +fcol) return false;
       return true;
     });
-    const tb = $("#s-tbody"); if(!tb) return;
+
+    // === 渲染表格 ===
+    const tb = $("#s-tbody");
+    if(!tb) return;
     tb.innerHTML = "";
+
     list.forEach(r=>{
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${r.id}</td><td>${r.code}</td><td>${r.row_idx}</td><td>${r.col_idx}</td>
-                      <td>${r.capacity ?? ""}</td><td>${r.quantity ?? ""}</td><td>${r.status}</td>
-                      <td>${r.x_mm ?? ""},${r.y_mm ?? ""}</td>`;
+      tr.innerHTML = `
+        <td>${r.id}</td>
+        <td>${r.code}</td>
+        <td>${r.row_idx}</td>
+        <td>${r.col_idx}</td>
+        <td>${r.capacity ?? ""}</td>
+        <td>${r.quantity ?? ""}</td>
+        <td>${r.status}</td>
+        <td>${r.x_mm ?? ""},${r.y_mm ?? ""}</td>
+      `;
+
+      // ✅ 新增：点击表格行自动把数据填入右侧表单（仅管理员可见）
+      tr.onclick = () => {
+        const adminPanel = document.querySelector('.admin-only');
+        if (!adminPanel || getComputedStyle(adminPanel).display === 'none') return;
+
+        $("#s-id").value    = r.id || "";
+        $("#s-code").value  = r.code || "";
+        $("#s-row").value   = r.row_idx ?? "";
+        $("#s-col").value   = r.col_idx ?? "";
+        $("#s-cap").value   = r.capacity ?? "";
+        $("#s-x").value     = r.x_mm ?? "";
+        $("#s-y").value     = r.y_mm ?? "";
+        $("#s-h").value     = r.height_mm ?? "";
+        $("#s-st").value    = r.status || "unknown";
+        $("#s-note").value  = r.note || "";
+      };
+
       tb.appendChild(tr);
     });
+
+    // === 更新信息 ===
     setText($("#s-msg"), `共 ${list.length} 行`);
   }
+
   async function createShelf(){
     try{
       const body = {
