@@ -1,4 +1,4 @@
-// wh_common.js  —— 公共工具（已修改：login 将保存 token 并跳转）
+// wh_common.js  —— 公共工具（兼容大写/小写 localStorage key）
 (function(){
   // === 配置（可在页面里覆盖 window.WH_API_BASE / window.WH_USERS_GUARD_SHA256） ===
   const API_BASE = (window.WH_API_BASE || "").trim();     // 例如 https://localhost:8000 或隧道域名
@@ -10,14 +10,47 @@
   function setText(el, t){ if(!el) return; el.textContent=t; }
   function show(el, on){ if(!el) return; el.style.display = on ? "" : "none"; }
 
-  // === 鉴权本地存储（保留原 key 以兼容现有页面） ===
-  const KEY_TOK="wh_token", KEY_ROLE="wh_role", KEY_NAME="wh_name";
+  // === 鉴权本地存储（兼容两种写法） ===
+  // 支持旧代码使用 "WH_TOKEN"/"WH_ROLE"/"WH_USER" 以及 新代码使用 "wh_token"/"wh_role"/"wh_name"
+  const KEYS = {
+    LOWER: { T: "wh_token", R: "wh_role", N: "wh_name" },
+    UPPER: { T: "WH_TOKEN", R: "WH_ROLE", N: "WH_USER" }
+  };
+
   const auth = {
-    token: () => localStorage.getItem(KEY_TOK),
-    role:  () => localStorage.getItem(KEY_ROLE)||"",
-    name:  () => localStorage.getItem(KEY_NAME)||"",
-    set:   (t,r,n)=>{ if(t) localStorage.setItem(KEY_TOK,t); if(r!==undefined) localStorage.setItem(KEY_ROLE,r||""); if(n!==undefined) localStorage.setItem(KEY_NAME,n||""); },
-    clear: ()=>{ localStorage.removeItem(KEY_TOK); localStorage.removeItem(KEY_ROLE); localStorage.removeItem(KEY_NAME); }
+    // token() 优先返回任意一个存在的 token（优先大写以兼容旧脚本）
+    token: () => {
+      return localStorage.getItem(KEYS.UPPER.T) || localStorage.getItem(KEYS.LOWER.T) || "";
+    },
+    role:  () => {
+      return localStorage.getItem(KEYS.UPPER.R) || localStorage.getItem(KEYS.LOWER.R) || "";
+    },
+    name:  () => {
+      return localStorage.getItem(KEYS.UPPER.N) || localStorage.getItem(KEYS.LOWER.N) || "";
+    },
+    // set 时同时写入两套 key，保证兼容性
+    set:   (t, r, n) => {
+      if(t !== undefined && t !== null){
+        localStorage.setItem(KEYS.LOWER.T, t);
+        localStorage.setItem(KEYS.UPPER.T, t);
+      }
+      if(r !== undefined){
+        localStorage.setItem(KEYS.LOWER.R, r || "");
+        localStorage.setItem(KEYS.UPPER.R, r || "");
+      }
+      if(n !== undefined){
+        localStorage.setItem(KEYS.LOWER.N, n || "");
+        localStorage.setItem(KEYS.UPPER.N, n || "");
+      }
+    },
+    // clear 时同时移除两套 key
+    clear: () => {
+      Object.values(KEYS).forEach(kset => {
+        localStorage.removeItem(kset.T);
+        localStorage.removeItem(kset.R);
+        localStorage.removeItem(kset.N);
+      });
+    }
   };
 
   // === 请求封装（自动加 Bearer / 统一错误） ===
@@ -76,25 +109,20 @@
     }
   }
 
-  // === 登录 / 登出 ===
-  /**
-   * login(username,password)
-   * - 调用后端 /api/auth/login
-   * - 成功后写入本地 auth 并自动跳转到控制台
-   * - 返回后端 JSON（供页面显示或处理）
-   */
+  // === login/logout ===
   async function login(username, password){
     const d = await api("/api/auth/login","POST",{username,password});
-    // 常见后端字段名：access_token / token / accessToken
-    const tok = d && (d.access_token || d.token || d.accessToken || d.jwt);
-    const role = d && (d.role || d.user_role || "");
-    const uname = d && (d.username || d.user || username);
+    // 常见后端字段名：access_token / token / accessToken / jwt
+    const tok = d && (d.access_token || d.token || d.accessToken || d.jwt || d.accessToken);
+    const role = d && (d.role || d.user_role || d.role_name || "");
+    const uname = d && (d.username || d.user || d.name || username);
     if(!tok) {
       // 若后端返回 200 但无 token，则仍抛错
       const err = new Error("登录成功但未收到 token");
       err.payload = d;
       throw err;
     }
+    // 存两套 key（兼容旧代码）
     auth.set(tok, role, uname);
     // 登录成功后立即跳转（使用 replace 避开浏览器历史）
     try {
