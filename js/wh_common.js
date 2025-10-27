@@ -1,73 +1,76 @@
-// wh_common.js  —— 公共工具（兼容大写/小写 localStorage key）
+// /js/wh_common.js
 (function(){
-  // === 配置（可在页面里覆盖 window.WH_API_BASE / window.WH_USERS_GUARD_SHA256） ===
-  const API_BASE = (window.WH_API_BASE || "").trim();     // 例如 https://localhost:8000 或隧道域名
-  const USERS_GUARD_SHA256 = (window.WH_USERS_GUARD_SHA256 || "").trim(); // Users 分栏二次口令的 SHA-256(HEX)
+  "use strict";
 
-  // === 简易 DOM ===
+  // 最终使用的 API_BASE（页面里请先通过 script. window.WH_API_BASE = "http://127.0.0.1:8000";）
+  const API_BASE = (window.WH_API_BASE || "").replace(/\/+$/,"");
+  const USERS_GUARD_SHA256 = (window.WH_USERS_GUARD_SHA256 || "").trim();
+
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
-  function setText(el, t){ if(!el) return; el.textContent=t; }
+  function setText(el, t){ if(!el) return; el.textContent = t; }
   function show(el, on){ if(!el) return; el.style.display = on ? "" : "none"; }
 
-  // === 鉴权本地存储（兼容两种写法） ===
-  // 支持旧代码使用 "WH_TOKEN"/"WH_ROLE"/"WH_USER" 以及 新代码使用 "wh_token"/"wh_role"/"wh_name"
+  // 兼容大小写 key（保证 login / console 两边都能识别）
   const KEYS = {
     LOWER: { T: "wh_token", R: "wh_role", N: "wh_name" },
     UPPER: { T: "WH_TOKEN", R: "WH_ROLE", N: "WH_USER" }
   };
 
   const auth = {
-    // token() 优先返回任意一个存在的 token（优先大写以兼容旧脚本）
     token: () => {
       return localStorage.getItem(KEYS.UPPER.T) || localStorage.getItem(KEYS.LOWER.T) || "";
     },
-    role:  () => {
+    role: () => {
       return localStorage.getItem(KEYS.UPPER.R) || localStorage.getItem(KEYS.LOWER.R) || "";
     },
-    name:  () => {
+    name: () => {
       return localStorage.getItem(KEYS.UPPER.N) || localStorage.getItem(KEYS.LOWER.N) || "";
     },
-    // set 时同时写入两套 key，保证兼容性
-    set:   (t, r, n) => {
-      if(t !== undefined && t !== null){
+    // 写入两套 key 保兼容
+    set: (t, r, n) => {
+      if (t !== undefined && t !== null) {
         localStorage.setItem(KEYS.LOWER.T, t);
         localStorage.setItem(KEYS.UPPER.T, t);
       }
-      if(r !== undefined){
+      if (r !== undefined) {
         localStorage.setItem(KEYS.LOWER.R, r || "");
         localStorage.setItem(KEYS.UPPER.R, r || "");
       }
-      if(n !== undefined){
+      if (n !== undefined) {
         localStorage.setItem(KEYS.LOWER.N, n || "");
         localStorage.setItem(KEYS.UPPER.N, n || "");
       }
     },
-    // clear 时同时移除两套 key
     clear: () => {
-      Object.values(KEYS).forEach(kset => {
-        localStorage.removeItem(kset.T);
-        localStorage.removeItem(kset.R);
-        localStorage.removeItem(kset.N);
+      Object.values(KEYS).forEach(k => {
+        localStorage.removeItem(k.T);
+        localStorage.removeItem(k.R);
+        localStorage.removeItem(k.N);
       });
     }
   };
 
-  // === 请求封装（自动加 Bearer / 统一错误） ===
+  // fetch 封装（自动加 Authorization）
   async function api(path, method="GET", body){
+    if(!API_BASE) {
+      throw new Error("no-api-base");
+    }
     const headers = {"Content-Type":"application/json"};
-    const t = auth.token(); if(t) headers["Authorization"]="Bearer "+t;
+    const t = auth.token();
+    if(t) headers["Authorization"] = "Bearer " + t;
+
     const ctl = new AbortController();
-    const timeout = setTimeout(()=>ctl.abort(), 12000); // 12s 超时
+    const timeout = setTimeout(()=>ctl.abort(), 12000);
     try{
-      const res = await fetch((API_BASE||"") + path, {method, headers, body: body?JSON.stringify(body):undefined, signal: ctl.signal});
-      const ctype = (res.headers.get("content-type")||"");
-      const isJSON = ctype.includes("application/json");
+      const res = await fetch(API_BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal });
+      const ctype = (res.headers.get("content-type") || "");
+      const isJSON = ctype.indexOf("application/json") !== -1;
       const text = await res.text().catch(()=>"");
       const data = isJSON && text ? JSON.parse(text) : text;
 
-      // 探测 401/403 -> 清空本地鉴权并抛出
       if(res.status === 401 || res.status === 403){
+        // 授权失败 -> 清 token
         auth.clear();
         const err = new Error("Unauthorized");
         err.status = res.status;
@@ -76,7 +79,7 @@
       }
 
       if(!res.ok){
-        const msg = (data && data.error) ? data.error : (typeof data === 'string' && data) ? data : res.statusText;
+        const msg = (data && data.error) ? data.error : (typeof data === "string" ? data : res.statusText);
         const err = new Error(msg || ("HTTP " + res.status));
         err.status = res.status;
         err.payload = data;
@@ -84,7 +87,6 @@
       }
       return data;
     }catch(e){
-      // 若是 fetch abort / network，包装信息
       if(e.name === "AbortError") throw new Error("timeout");
       throw e;
     }finally{
@@ -92,16 +94,38 @@
     }
   }
 
-  // === 健康检查：失败则显示“服务器未启动”占位，隐藏页面主体 ===
+  // 健康检测：把 API 文本写到 #wh-api（如果存在）
   async function healthGuard(selectorMain, selectorGuard){
     const main = selectorMain ? $(selectorMain) : null;
     const guard = selectorGuard ? $(selectorGuard) : null;
+
+    // 写入 API 文本到页面显示，便于排错
+    try {
+      const apiLabel = document.getElementById("wh-api");
+      if(apiLabel) apiLabel.textContent = API_BASE || "--";
+    } catch(e){}
+
+    if(!API_BASE){
+      // 若没有配置 API_BASE，直接显示 guard
+      if(main) show(main, false);
+      if(guard) show(guard, true);
+      return false;
+    }
+
     try{
-      const d = await api("/api/health","GET");
-      const ok = d && d.ok === true;
-      if(main) show(main, ok);
-      if(guard) show(guard, !ok);
-      return ok;
+      const ctl = new AbortController();
+      const timer = setTimeout(()=>ctl.abort(), 4000);
+      const res = await fetch(API_BASE + "/api/health", { signal: ctl.signal });
+      clearTimeout(timer);
+      if(res.ok){
+        if(main) show(main, true);
+        if(guard) show(guard, false);
+        return true;
+      }else{
+        if(main) show(main, false);
+        if(guard) show(guard, true);
+        return false;
+      }
     }catch(e){
       if(main) show(main, false);
       if(guard) show(guard, true);
@@ -109,28 +133,23 @@
     }
   }
 
-  // === login/logout ===
+  // login: 调用 /api/auth/login 保存 token（写入两套 key）
   async function login(username, password){
     const d = await api("/api/auth/login","POST",{username,password});
-    // 常见后端字段名：access_token / token / accessToken / jwt
-    const tok = d && (d.access_token || d.token || d.accessToken || d.jwt || d.accessToken);
-    const role = d && (d.role || d.user_role || d.role_name || "");
-    const uname = d && (d.username || d.user || d.name || username);
+    const tok = d && (d.access_token || d.token || d.accessToken || d.jwt);
+    const role = d && (d.role || d.user_role || "");
+    const uname = d && (d.username || d.user || username);
+
     if(!tok) {
-      // 若后端返回 200 但无 token，则仍抛错
       const err = new Error("登录成功但未收到 token");
       err.payload = d;
       throw err;
     }
-    // 存两套 key（兼容旧代码）
+
     auth.set(tok, role, uname);
-    // 登录成功后立即跳转（使用 replace 避开浏览器历史）
-    try {
-      location.replace("/warehouse/console/");
-    } catch(e){
-      // 在某些环境 replace 可能失败，fallback to href
-      location.href = "/warehouse/console/";
-    }
+
+    try { location.replace("/warehouse/console/"); }
+    catch { location.href = "/warehouse/console/"; }
     return d;
   }
 
@@ -139,26 +158,27 @@
     try{ location.replace("/warehouse/login/"); }catch(e){ location.href="/warehouse/login/"; }
   }
 
-  // === Users 分栏二次口令校验（前端 SHA-256） ===
+  // Users 二次口令（前端 sha256）
   async function sha256Hex(s){
     const enc = new TextEncoder().encode(s);
     const buf = await crypto.subtle.digest("SHA-256", enc);
     return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
   }
   async function guardUsersTab(){
-    if(!USERS_GUARD_SHA256) return true; // 未配置就不校验
+    if(!USERS_GUARD_SHA256) return true;
     const input = prompt("请输入 Users 分栏口令");
-    if(input===null) return false;
+    if(input === null) return false;
     const h = await sha256Hex(input);
     return (h === USERS_GUARD_SHA256);
   }
 
-  // === 导出到全局，供各页面使用 ===
-  window.WH = Object.assign(window.WH||{}, {
+  // 导出
+  window.WH = Object.assign(window.WH || {}, {
     API_BASE, api, healthGuard, auth, login, logout, guardUsersTab,
-    $,$$, setText, show, sha256Hex
+    $, $$, setText, show, sha256Hex
   });
 
-  // PJAX 兼容：页面可在 pjax:complete 时再次挂载
-  document.addEventListener("pjax:complete", ()=>{ if(typeof window.WH_PAGE_MOUNT==='function') window.WH_PAGE_MOUNT(); });
+  // pjax 兼容
+  document.addEventListener("pjax:complete", ()=>{ if(typeof window.WH_PAGE_MOUNT === 'function') window.WH_PAGE_MOUNT(); });
+
 })();
