@@ -6,6 +6,7 @@
 
   // 缓存
   let shelvesCache = [], invAllCache = [], tasksCache = [];
+  let usersCache = [];
 
   // ========== Shelves ==========
   async function loadShelves(){
@@ -242,42 +243,71 @@
   }
 
   // ===== Users =====
-  async function loadUsersGuarded(){
-    const ok = await guardUsersTab();
-    if(!ok) return alert("口令错误，无法查看 Users");
-    await loadUsers();
-  }
-  async function loadUsers(){
+  async function createUser(){
     try{
-      const rows = await api("/api/users","GET");
-      const tb = $("#u-tbody"); if(!tb) return;
-      tb.innerHTML = "";
-      rows.forEach(r=>{
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${r.id}</td><td>${r.username}</td><td>${r.role}</td>
-                        <td>${r.created_at}</td><td>${r.updated_at}</td>`;
-        tb.appendChild(tr);
-      });
-      setText($("#u-msg"), `共 ${rows.length} 行`);
-    }catch(e){ setText($("#u-msg"), String(e.message || e)); }
-  }
-  async function updateUser(){
-    try{
-      const id = +$("#u-id").value; if(!id) return alert("请输入 user_id");
-      const body = { role: $("#u-role").value, status: $("#u-status").value };
-      const pw = $("#u-pass").value; if(pw) body.password = pw;
-      await api(`/api/users/${id}`,"PATCH", body);
+      // 假设 HTML 中有 #u-name, #u-pass, #u-role, #u-note
+      const name = $("#u-name").value.trim();
+      const pass = $("#u-pass").value.trim();
+      const role = $("#u-role").value;
+      // 使用可选链操作符处理可能不存在的元素
+      const note = $("#u-note")?.value || null;
+      if(!name || !pass) return alert("用户名和密码不能为空");
+
+      const body = { username: name, password: pass, role: role, note: note };
+
+      // 假设使用 /api/auth/register 接口创建新用户
+      await api("/api/auth/register","POST",body);
+
+      // 清空输入框（可选）
+      $("#u-name").value = "";
       $("#u-pass").value = "";
-      await loadUsers();
-    }catch(e){ alert("更新失败: " + (e.message || e)); }
+      if($("#u-note")) $("#u-note").value = "";
+
+      alert("用户创建成功");
+      // 【关键】创建成功后，强制刷新列表 (loadUsers(true))
+      await loadUsers(true);
+    }catch(e){ alert("创建失败: " + (e.message || e)); }
   }
-  async function delUser(){
-    try{
-      const id = +$("#u-id").value; if(!id) return alert("请输入 user_id");
-      if(!confirm(`确认删除 user ${id} ?`)) return;
-      await api(`/api/users/${id}`,"DELETE");
-      await loadUsers();
-    }catch(e){ alert("删除失败: " + (e.message || e)); }
+  async function loadUsersGuarded(){
+    const ok = await guardUsersTab(); //
+    if(!ok) return alert("口令错误，无法查看 Users");
+    await loadUsers(true); // 默认打开时强制加载
+  }
+
+  // 统一加载和渲染逻辑
+  async function loadUsers(forceReload = false){
+      setText($("#u-msg"), "");
+      try{
+        // forceReload 为 true 时，或缓存为空时，从后端获取数据
+        if(forceReload || usersCache.length === 0){
+          usersCache = await api("/api/users","GET");
+        }
+
+        const rows = usersCache;
+        const tb = $("#u-tbody"); if(!tb) return;
+
+        // 【新增】搜索和过滤逻辑 (客户端)
+        const q    = ($("#u-q")?.value || "").trim().toLowerCase();
+        const role = ($("#u-filter-role")?.value || "").trim().toLowerCase();
+
+        const list = rows.filter(r => {
+            // 搜索: 检查用户名是否包含 q
+            if (q && !(r.username || "").toLowerCase().includes(q)) return false;
+            // 过滤: 检查角色是否匹配 role
+            if (role && (r.role || "").toLowerCase() !== role) return false;
+            return true;
+        });
+
+        tb.innerHTML = "";
+        // 【使用过滤后的 list 进行渲染】
+        list.forEach(r=>{
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${r.id}</td><td>${r.username}</td><td>${r.role}</td><td>${r.status}</td>
+                          <td>${r.created_at}</td><td>${r.updated_at}</td>`;
+          tb.appendChild(tr);
+        });
+        setText($("#u-msg"), `共 ${list.length} 行`);
+      }catch(e){ setText($("#u-msg"), String(e.message || e), "error"); }
   }
 
   // ========== Mount / 权限 / 事件绑定 ==========
@@ -347,9 +377,17 @@
     }
     // Users
     if(isAdmin){
-      $("#u-btn-load") && $("#u-btn-load").addEventListener("click", loadUsersGuarded);
-      $("#u-btn-update") && $("#u-btn-update").addEventListener("click", updateUser);
-      $("#u-btn-del") && $("#u-btn-del").addEventListener("click", delUser);
+      // 【新增】绑定创建、搜索、过滤按钮
+      $("#u-btn-create") && ($("#u-btn-create").onclick = createUser); // <-- 绑定创建功能
+      // 搜索按钮：重新加载数据 (loadUsers(true))
+      $("#u-btn-search") && ($("#u-btn-search").onclick = ()=> loadUsers(true));
+      // 过滤按钮：对缓存数据进行过滤 (loadUsers(false))
+      $("#u-btn-apply") && ($("#u-btn-apply").onclick  = ()=> loadUsers(false));
+
+      // 原有的绑定
+      $("#u-btn-load") && ($("#u-btn-load").onclick   = loadUsersGuarded);
+      $("#u-btn-update") && ($("#u-btn-update").onclick = updateUser);
+      $("#u-btn-del") && ($("#u-btn-del").onclick    = delUser);
     }
     // Logout
     $("#btnLogout") && $("#btnLogout").addEventListener("click", ()=> { auth.clear(); try{ location.replace("/warehouse/login/"); }catch(e){ location.href="/warehouse/login/"; } });
