@@ -323,37 +323,41 @@
         if(!uid) return setText($("#u-msg"), "请输入 user_id 进行更新", "error");
 
         const body = {};
-        // 根据 console.pug 的字段：u-pass, u-role, u-status
         if($("#u-pass")?.value) body.password = $("#u-pass").value;
         if($("#u-role")?.value) body.role = $("#u-role").value;
         if($("#u-status")?.value) body.status = $("#u-status").value;
+
+        const noteEl = $("#u-note");
+        if(noteEl && (noteEl.value !== null && noteEl.value !== undefined)) {
+             body.note = noteEl.value || null; // 允许将 note 清空为 null
+        }
 
         if (Object.keys(body).length === 0) return setText($("#u-msg"), "请输入要更新的字段", "error");
 
         await api(`/api/users/${uid}`,"PATCH",body);
         setText($("#u-msg"), `用户 ${uid} 更新成功`, "ok");
-        await loadUsers(); // ✅ 刷新表格
+        await loadUsers(true);
     }catch(e){
         setText($("#u-msg"), String(e.message || e), "error");
     }
-}
+  }
 
-async function delUser(){
-    setText($("#u-msg"), "");
-    try{
-        const uid = +$("#u-id")?.value;
-        if(!uid) return setText($("#u-msg"), "请输入 user_id 进行删除", "error");
+  async function delUser(){
+      setText($("#u-msg"), "");
+      try{
+          const uid = +$("#u-id")?.value;
+          if(!uid) return setText($("#u-msg"), "请输入 user_id 进行删除", "error");
 
-        if(!confirm(`确认删除用户 ${uid} 吗？`)) return;
+          if(!confirm(`确认删除用户 ${uid} 吗？`)) return;
 
-        await api(`/api/users/${uid}`,"DELETE");
-        setText($("#u-msg"), `用户 ${uid} 删除成功`, "ok");
-        $("#u-id").value = "";
-        await loadUsers();
-    }catch(e){
-        setText($("#u-msg"), String(e.message || e), "error");
-    }
-}
+          await api(`/api/users/${uid}`,"DELETE");
+          setText($("#u-msg"), `用户 ${uid} 删除成功`, "ok");
+          $("#u-id").value = "";
+          await loadUsers(true);
+      }catch(e){
+          setText($("#u-msg"), String(e.message || e), "error");
+      }
+  }
 
   async function loadUsersGuarded(){
     const ok = await guardUsersTab(); //
