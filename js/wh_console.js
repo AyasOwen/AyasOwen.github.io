@@ -68,7 +68,7 @@
       const body = {
         code: $("#s-code").value.trim(),
         row_idx: +$("#s-row").value, col_idx: +$("#s-col").value,
-        capacity: +$("#s-limit").value,
+        capacity: +$("#s-cap").value,
         x_mm: $("#s-x").value? +$("#s-x").value : undefined,
         y_mm: $("#s-y").value? +$("#s-y").value : undefined,
         height_mm: $("#s-h").value? +$("#s-h").value : undefined,
