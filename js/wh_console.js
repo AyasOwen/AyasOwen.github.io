@@ -252,15 +252,24 @@
     try{
       const body = {
         type: $("#t-type").value,
-        shelf_id: +$("#t-shelf").value,
+        shelf_id: +$("#t-sid").value,
         assigned_to: $("#t-who").value || undefined,
-        status: $("#t-status").value,
         payload: $("#t-payload").value ? JSON.parse($("#t-payload").value) : undefined
       };
+
+      if(!body.type) return alert("任务类型不能为空");
+      if(!body.shelf_id || isNaN(body.shelf_id)) return alert("shelf_id 必填且必须是有效数字");
+
       await api("/api/tasks","POST",body);
+
+      $("#t-sid").value = "";
+      $("#t-who").value = "";
+      $("#t-payload").value = "";
+
+      alert("任务创建成功");
       await loadTasks();
     }catch(e){ alert("创建任务失败: " + (e.message || e)); }
-  }
+}
 
   // ===== Observations =====
   async function loadObs(){
