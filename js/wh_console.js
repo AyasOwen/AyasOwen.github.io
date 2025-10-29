@@ -64,20 +64,16 @@
   }
 
   async function createShelf(){
-    // 假设您有一个 setText 函数用于显示消息
     setText($("#s-msg"), "");
 
-    // 1. 安全地获取所有输入框的值，避免 null 错误
+    // 必须使用 ?.value 安全获取值
     const code = $("#s-code")?.value?.trim();
     const row_idx = $("#s-row")?.value;
     const col_idx = $("#s-col")?.value;
-    // ❗ 重点：capacity 的 ID 在您的 pug 文件中是 #s-cap
-    const capacity = $("#s-cap")?.value;
+    const capacity = $("#s-cap")?.value; // 确保这是正确的 ID
 
-    // 2. 检查必填字段
     if(!code || !row_idx || !col_idx || !capacity) {
-        // 假设您有一个 setText 函数来显示错误
-        alert("请完整填写货架 code, row, col 和 capacity");
+        setText($("#s-msg"), "请完整填写货架 code, row, col 和 capacity", "error");
         return;
     }
 
@@ -86,22 +82,23 @@
             code: code,
             row_idx: +row_idx, col_idx: +col_idx,
             capacity: +capacity,
-            // 3. 确保可选字段也使用安全获取和转换
+            // 确保可选字段也使用安全获取
             x_mm: $("#s-x")?.value ? +$("#s-x").value : undefined,
             y_mm: $("#s-y")?.value ? +$("#s-y").value : undefined,
             height_mm: $("#s-h")?.value ? +$("#s-h").value : undefined,
-            status: $("#s-st")?.value, // status 和 note 可能是 null/undefined
+            status: $("#s-st")?.value,
             note: $("#s-note")?.value || null
         };
 
-        // 4. 发送 API 请求并刷新
         await api("/api/shelves","POST",body);
-        alert("新建成功"); // 替换 alert 为 setText 更好
+        setText($("#s-msg"), "新建成功", "ok");
         await loadShelves();
     }catch(e){
-        alert("新建失败: " + (e.message || e));
+        setText($("#s-msg"), "新建失败: " + (e.message || e), "error");
     }
-}
+  }
+
+
   async function updateShelf(){
     try{
       const id = +$("#s-id").value; if(!id) return alert("请输入 shelf_id");
@@ -319,44 +316,44 @@
     }catch(e){ alert("创建失败: " + (e.message || e)); }
   }
 
-  // ====== Users（新增 updateUser 和 delUser 定义） ======
-
-  // 根据 console.pug 中 input#u-id, input#u-name, select#u-role, select#u-status 定义
   async function updateUser(){
     setText($("#u-msg"), "");
     try{
-      const uid = +$("#u-id").value;
-      if(!uid) return alert("请输入 user_id 进行更新");
+        const uid = +$("#u-id")?.value;
+        if(!uid) return setText($("#u-msg"), "请输入 user_id 进行更新", "error");
 
-      const body = {};
-      // 只有填写了的字段才进行更新
-      if($("#u-pass").value) body.password = $("#u-pass").value;
-      if($("#u-role").value) body.role = $("#u-role").value;
-      if($("#u-status").value) body.status = $("#u-status").value;
+        const body = {};
+        // 根据 console.pug 的字段：u-pass, u-role, u-status
+        if($("#u-pass")?.value) body.password = $("#u-pass").value;
+        if($("#u-role")?.value) body.role = $("#u-role").value;
+        if($("#u-status")?.value) body.status = $("#u-status").value;
 
-      if (Object.keys(body).length === 0) return alert("请输入要更新的字段");
+        if (Object.keys(body).length === 0) return setText($("#u-msg"), "请输入要更新的字段", "error");
 
-      await api(`/api/users/${uid}`,"PATCH",body);
-      alert(`用户 ${uid} 更新成功`);
-      await loadUsers();
-    }catch(e){ setText($("#u-msg"), String(e.message || e), "error"); }
-  }
+        await api(`/api/users/${uid}`,"PATCH",body);
+        setText($("#u-msg"), `用户 ${uid} 更新成功`, "ok");
+        await loadUsers(); // ✅ 刷新表格
+    }catch(e){
+        setText($("#u-msg"), String(e.message || e), "error");
+    }
+}
 
-  async function delUser(){
+async function delUser(){
     setText($("#u-msg"), "");
     try{
-      const uid = +$("#u-id").value;
-      if(!uid) return alert("请输入 user_id 进行删除");
+        const uid = +$("#u-id")?.value;
+        if(!uid) return setText($("#u-msg"), "请输入 user_id 进行删除", "error");
 
-      if(!confirm(`确认删除用户 ${uid} 吗？`)) return;
+        if(!confirm(`确认删除用户 ${uid} 吗？`)) return;
 
-      await api(`/api/users/${uid}`,"DELETE"); // 假设后端 API 是 DELETE /api/users/<uid>
-      alert(`用户 ${uid} 删除成功`);
-      // 清空输入框
-      $("#u-id").value = "";
-      await loadUsers();
-    }catch(e){ setText($("#u-msg"), String(e.message || e), "error"); }
-  }
+        await api(`/api/users/${uid}`,"DELETE");
+        setText($("#u-msg"), `用户 ${uid} 删除成功`, "ok");
+        $("#u-id").value = "";
+        await loadUsers();
+    }catch(e){
+        setText($("#u-msg"), String(e.message || e), "error");
+    }
+}
 
   async function loadUsersGuarded(){
     const ok = await guardUsersTab(); //
@@ -499,12 +496,7 @@
   }
 
   // mount on DOM ready
-  document.addEventListener("DOMContentLoaded", function(){
-    // Expose for console debugging
-    window.WH = window.WH || {};
-    window.WH._internal = { loadShelves, loadInventoryAll, loadTasks, loadObs, loadUsers };
-    mount();
-  });
+  document.addEventListener('DOMContentLoaded', mount);
 
   // expose mount for pjax compatibility
   window.WH_PAGE_MOUNT = mount;
