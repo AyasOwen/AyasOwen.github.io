@@ -404,15 +404,13 @@
     }
     // Users
     if(isAdmin){
-      // 【新增】绑定创建、搜索、过滤按钮
-      $("#u-btn-create") && ($("#u-btn-create").onclick = createUser); // <-- 绑定创建功能
-      // 搜索按钮：重新加载数据 (loadUsers(true))
-      $("#u-btn-search") && ($("#u-btn-search").onclick = ()=> loadUsers(true));
-      // 过滤按钮：对缓存数据进行过滤 (loadUsers(false))
-      $("#u-btn-apply") && ($("#u-btn-apply").onclick  = ()=> loadUsers(false));
+      $("#u-btn-search") && ($("#u-btn-search").onclick = loadUsers);
+      $("#u-btn-apply") && ($("#u-btn-apply").onclick  = loadUsers);
 
-      // 原有的绑定
-      $("#u-btn-load") && ($("#u-btn-load").onclick   = loadUsersGuarded);
+      // 2. 绑定 "新建" 按钮
+      $("#u-btn-create") && ($("#u-btn-create").onclick = createUser);
+
+      // 3. 修正 "删除" 按钮的 ID (Pug [cite: 72] 中是 #u-btn-delete)
       $("#u-btn-update") && ($("#u-btn-update").onclick = updateUser);
       $("#u-btn-delete") && ($("#u-btn-delete").onclick = delUser);
     }
