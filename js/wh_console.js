@@ -105,15 +105,18 @@
   }
 
   // ===== Inventory simplified =====
+  // ====== Inventory ======
   async function loadInventoryAll(){
     setText($("#i-msg"), "");
+    const tb = $("#i-tbody"); if(!tb) return;
+    tb.innerHTML = "";
+
+    let rows = [];
     try{
-      // 优先尝试后端提供的总表接口
-      const rows = await api("/api/inventory/all","GET").catch(()=>null);
-      if(Array.isArray(rows)) {
-        invAllCache = rows;
-      } else {
-        // fallback: 逐个 shelf 调用 inventory
+      rows = await api("/api/inventory/all","GET");
+      invAllCache = rows;
+    }catch(e){
+      try{
         const sh = await api("/api/shelves","GET");
         const all = [];
         for(const s of sh){
@@ -122,31 +125,51 @@
             (d.items||[]).forEach(it=> all.push({shelf_id:d.shelf_id, code:s.code, ...it}));
           }catch(_){}
         }
-        invAllCache = all;
+        rows = all;
+        invAllCache = rows;
+      }catch(ee){
+        invAllCache = [];
       }
-    }catch(e){
-      console.error("loadInventoryAll error:", e);
-      invAllCache = [];
     }
-    renderInventory(invAllCache);
-  }
-  function renderInventory(rows){
-    rows = rows || [];
-    const fcode = $("#si-filter-item").value.trim().toLowerCase();
+    const fcode = $("#i-filter-code").value.trim().toLowerCase();
+    const ftype = $("#i-filter-type").value.trim().toLowerCase();
     const list = rows.filter(r=>{
-      if(fcode && !(r.item_type||"").toLowerCase().includes(fcode)) return false;
+      if(fcode && !(r.code||"").toLowerCase().includes(fcode)) return false;
+      if(ftype && !(r.item_type||"").toLowerCase().includes(ftype)) return false;
       return true;
     });
-    const tb = $("#si-tbody"); if(!tb) return;
-    tb.innerHTML = "";
+
     list.forEach(r=>{
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${r.id}</td><td>${r.shelf_id}</td><td>${r.item_type}</td>
+      tr.innerHTML = `<td>${r.shelf_id}</td><td>${r.code||""}</td><td>${r.item_type}</td>
                       <td>${r.quantity}</td><td>${r.updated_at}</td>`;
       tb.appendChild(tr);
     });
-    setText($("#si-msg"), `共 ${list.length} 行`);
+    setText($("#i-msg"), `共 ${list.length} 行`);
   }
+
+  function renderInventory(rows){
+    rows = rows || [];
+    const tb = $("#i-tbody"); if(!tb) return;
+    tb.innerHTML = ""; // 确保清除
+
+    const fcode = $("#i-filter-code").value.trim().toLowerCase();
+    const ftype = $("#i-filter-type").value.trim().toLowerCase();
+    const list = rows.filter(r=>{
+      if(fcode && !(r.code||"").toLowerCase().includes(fcode)) return false;
+      if(ftype && !(r.item_type||"").toLowerCase().includes(ftype)) return false;
+      return true;
+    });
+
+    list.forEach(r=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${r.shelf_id}</td><td>${r.code||""}</td><td>${r.item_type}</td>
+                      <td>${r.quantity}</td><td>${r.updated_at}</td>`;
+      tb.appendChild(tr);
+    });
+    setText($("#i-msg"), `共 ${list.length} 行`);
+  }
+
   async function invUpsert(){
     try{
       const body = {
@@ -230,12 +253,16 @@
       if(sid) qs.push("shelf_id=" + encodeURIComponent(sid));
       qs.push("limit=" + encodeURIComponent(lim));
       const path = "/api/observations" + (qs.length ? ("?" + qs.join("&")) : "");
-      const rows = await api(path,"GET");
       const tb = $("#o-tbody"); if(!tb) return;
       tb.innerHTML = "";
+      const rows = await api(path,"GET");
       rows.forEach(r=>{
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${r.observed_status}</td><td>${r.item_type || ""}</td><td>${r.quantity_est ?? ""}</td><td>${r.occupancy_pct ?? ""}</td><td>${r.confidence ?? ""}</td><td>${r.x_mm ?? ""},${r.y_mm ?? ""}</td><td>${r.source||""}</td><td>${r.robot_id||""}</td><td>${r.detected_at||""}</td>`;
+        tr.innerHTML = `<td>${r.shelf_id}</td><td>${r.code}</td><td>${r.observed_status}</td>
+                      <td>${r.item_type||""}</td><td>${r.quantity_est??""}</td>
+                      <td>${r.occupancy_pct??""}</td><td>${r.confidence??""}</td>
+                      <td>${r.x_mm??""},${r.y_mm??""}</td><td>${r.source}</td><td>${r.robot_id??""}</td>
+                      <td>${r.detected_at}</td>`;
         tb.appendChild(tr);
       });
       setText($("#o-msg"), `共 ${rows.length} 行`);
@@ -387,10 +414,11 @@
       // 原有的绑定
       $("#u-btn-load") && ($("#u-btn-load").onclick   = loadUsersGuarded);
       $("#u-btn-update") && ($("#u-btn-update").onclick = updateUser);
-      $("#u-btn-del") && ($("#u-btn-del").onclick    = delUser);
+      $("#u-btn-delete") && ($("#u-btn-delete").onclick = delUser);
     }
     // Logout
-    $("#btnLogout") && $("#btnLogout").addEventListener("click", ()=> { auth.clear(); try{ location.replace("/warehouse/login/"); }catch(e){ location.href="/warehouse/login/"; } });
+    const logoutBtn = $("#btnLogout");
+    if(logoutBtn) logoutBtn.onclick = WH.logout;
 
     // 默认打开
     switchTab("shelves");
