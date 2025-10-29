@@ -250,15 +250,20 @@
   }
   async function createTask(){
     try{
-      const body = {
-        type: $("#t-type").value,
-        shelf_id: +$("#t-sid").value,
-        assigned_to: $("#t-who").value || undefined,
-        payload: $("#t-payload").value ? JSON.parse($("#t-payload").value) : undefined
-      };
+      const ttype = $("#t-type").value;
+      const shelf_id_val = $("#t-sid").value;
+      const who = $("#t-who").value;
+      const payload_val = $("#t-payload").value;
 
-      if(!body.type) return alert("任务类型不能为空");
-      if(!body.shelf_id || isNaN(body.shelf_id)) return alert("shelf_id 必填且必须是有效数字");
+      if(!ttype) return alert("任务类型不能为空");
+      if(!shelf_id_val || isNaN(+shelf_id_val)) return alert("shelf_id 必填且必须是有效数字");
+
+      const body = {
+        type: ttype,
+        shelf_id: +shelf_id_val,
+        assigned_to: who || undefined,
+        payload: payload_val ? JSON.parse(payload_val) : undefined
+      };
 
       await api("/api/tasks","POST",body);
 
@@ -268,7 +273,11 @@
 
       alert("任务创建成功");
       await loadTasks();
-    }catch(e){ alert("创建任务失败: " + (e.message || e)); }
+    }catch(e){
+        // 捕获 API 错误或 JSON 解析错误
+        console.error("创建任务失败:", e);
+        alert("创建任务失败: " + (e.message || e));
+    }
 }
 
   // ===== Observations =====
