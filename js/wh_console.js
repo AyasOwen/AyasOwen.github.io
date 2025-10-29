@@ -218,22 +218,42 @@
   }
 
   // ===== Tasks =====
-  async function loadTasks(){
+  async function loadTasks(forceReload = false){
+    setText($("#t-msg"), "");
     try{
-      const st = $("#t-filter-status").value;
-      const sid= $("#t-filter-sid").value;
-      let path = "/api/tasks";
-      const qs = [];
-      if(st) qs.push("status=" + encodeURIComponent(st));
-      if(sid) qs.push("shelf_id=" + encodeURIComponent(sid));
-      if(qs.length) path += "?" + qs.join("&");
-      tasksCache = await api(path,"GET");
-      renderTasks(tasksCache);
+        const tb = $("#t-tbody");
+        if(!tb) return;
+        if(forceReload || tasksCache.length === 0){
+            tasksCache = await api("/api/tasks","GET");
+        }
+
+        const rows = tasksCache;
+        const st = ($("#t-filter-status")?.value || "").trim();
+        const sid= ($("#t-filter-sid")?.value || "").trim();
+
+        const list = rows.filter(r => {
+            if (st && r.status !== st) return false;
+            if (sid && String(r.shelf_id) !== sid) return false;
+            return true;
+        });
+
+        tb.innerHTML = "";
+        list.forEach(r=>{
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${r.id}</td><td>${r.type}</td><td>${r.shelf_id}</td>
+                             <td>${r.status}</td><td>${r.assigned_to||""}</td>
+                             <td>${typeof r.payload==='object'? JSON.stringify(r.payload): (r.payload||"")}</td>
+                             <td>${r.created_at}</td><td>${r.updated_at}</td>`;
+            tb.appendChild(tr);
+        });
+
+        setText($("#t-msg"), `共 ${list.length} 行 (总数: ${rows.length})`);
     }catch(e){
-      console.error("loadTasks error:", e);
-      setText($("#t-msg"), String(e.message || e));
+        console.error("loadTasks error:", e);
+        setText($("#t-msg"), String(e.message || e), "error");
     }
   }
+
   function renderTasks(rows){
     rows = rows || [];
     const tb = $("#t-tbody"); if(!tb) return;
@@ -248,37 +268,39 @@
     });
     setText($("#t-msg"), `共 ${rows.length} 行`);
   }
+
   async function createTask(){
     try{
-      const ttype = $("#t-type").value;
-      const shelf_id_val = $("#t-sid").value;
-      const who = $("#t-who").value;
-      const payload_val = $("#t-payload").value;
+        const ttype = $("#t-type").value;
+        const shelf_id_val = $("#t-sid").value;
+        const who = $("#t-who").value;
+        const payload_val = $("#t-payload").value;
 
-      if(!ttype) return alert("任务类型不能为空");
-      if(!shelf_id_val || isNaN(+shelf_id_val)) return alert("shelf_id 必填且必须是有效数字");
+        if(!ttype) return alert("任务类型不能为空");
+        if(!shelf_id_val || isNaN(+shelf_id_val)) return alert("shelf_id 必填且必须是有效数字");
 
-      const body = {
-        type: ttype,
-        shelf_id: +shelf_id_val,
-        assigned_to: who || undefined,
-        payload: payload_val ? JSON.parse(payload_val) : undefined
-      };
+        const body = {
+            type: ttype,
+            shelf_id: +shelf_id_val,
+            assigned_to: who || undefined,
+            payload: payload_val ? JSON.parse(payload_val) : undefined
+        };
 
-      await api("/api/tasks","POST",body);
+        // 调用 API
+        await api("/api/tasks","POST",body);
 
-      $("#t-sid").value = "";
-      $("#t-who").value = "";
-      $("#t-payload").value = "";
+        // 清空输入框
+        $("#t-sid").value = "";
+        $("#t-who").value = "";
+        $("#t-payload").value = "";
 
-      alert("任务创建成功");
-      await loadTasks();
+        alert("任务创建成功");
+        await loadTasks(true);
     }catch(e){
-        // 捕获 API 错误或 JSON 解析错误
         console.error("创建任务失败:", e);
         alert("创建任务失败: " + (e.message || e));
     }
-}
+  }
 
   // ===== Observations =====
   async function loadObs(){
@@ -476,7 +498,7 @@
       $("#i-btn-del") && $("#i-btn-del").addEventListener("click", invDelete);
     }
     // Tasks
-    $("#t-btn-load") && $("#t-btn-load").addEventListener("click", loadTasks);
+    $("#t-btn-load") && $("#t-btn-load").addEventListener("click", () => loadTasks(true));
     if(isAdmin){
       $("#t-btn-create") && $("#t-btn-create").addEventListener("click", createTask);
     }
