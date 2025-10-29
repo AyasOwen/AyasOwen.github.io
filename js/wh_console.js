@@ -407,16 +407,14 @@
       $("#u-btn-search") && ($("#u-btn-search").onclick = loadUsers);
       $("#u-btn-apply") && ($("#u-btn-apply").onclick  = loadUsers);
 
-      // 2. 绑定 "新建" 按钮
       $("#u-btn-create") && ($("#u-btn-create").onclick = createUser);
-
-      // 3. 修正 "删除" 按钮的 ID (Pug [cite: 72] 中是 #u-btn-delete)
       $("#u-btn-update") && ($("#u-btn-update").onclick = updateUser);
       $("#u-btn-delete") && ($("#u-btn-delete").onclick = delUser);
     }
     // Logout
     const logoutBtn = $("#btnLogout");
-    if(logoutBtn) logoutBtn.onclick = WH.logout;
+    if (logoutBtn) logoutBtn.onclick = WH.logout;
+    $("#btnLogout") && ($("#btnLogout").onclick = WH.logout);
 
     // 默认打开
     switchTab("shelves");
