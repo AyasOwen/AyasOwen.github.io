@@ -531,7 +531,11 @@
     $$(".tab-panel").forEach(p => p.style.display = (p.id === ("tab-" + name)) ? "" : "none");
     if(name === "shelves") loadShelves();
     if(name === "shelf_inventory") loadInventoryAll();
-    if(name === "tasks") loadTasks();
+    if(name === "tasks") {
+        $("#t-filter-status").value = "";
+        $("#t-filter-sid").value = "";
+        loadTasks();
+    }
     if(name === "shelf_observations") loadObs();
 
     if(name === "users"){
