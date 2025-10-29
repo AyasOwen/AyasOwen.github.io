@@ -63,22 +63,45 @@
     setText($("#s-msg"), `共 ${list.length} 行`);
   }
 
-  async function createShelf(){ /* ... same as before ... */
+  async function createShelf(){
+    // 假设您有一个 setText 函数用于显示消息
+    setText($("#s-msg"), "");
+
+    // 1. 安全地获取所有输入框的值，避免 null 错误
+    const code = $("#s-code")?.value?.trim();
+    const row_idx = $("#s-row")?.value;
+    const col_idx = $("#s-col")?.value;
+    // ❗ 重点：capacity 的 ID 在您的 pug 文件中是 #s-cap
+    const capacity = $("#s-cap")?.value;
+
+    // 2. 检查必填字段
+    if(!code || !row_idx || !col_idx || !capacity) {
+        // 假设您有一个 setText 函数来显示错误
+        alert("请完整填写货架 code, row, col 和 capacity");
+        return;
+    }
+
     try{
-      const body = {
-        code: $("#s-code").value.trim(),
-        row_idx: +$("#s-row").value, col_idx: +$("#s-col").value,
-        capacity: +$("#s-cap").value,
-        x_mm: $("#s-x").value? +$("#s-x").value : undefined,
-        y_mm: $("#s-y").value? +$("#s-y").value : undefined,
-        height_mm: $("#s-h").value? +$("#s-h").value : undefined,
-        status: $("#s-st").value,
-        note: $("#s-note").value || null
-      };
-      await api("/api/shelves","POST",body);
-      await loadShelves();
-    }catch(e){ alert("新建失败: " + (e.message || e)); }
-  }
+        const body = {
+            code: code,
+            row_idx: +row_idx, col_idx: +col_idx,
+            capacity: +capacity,
+            // 3. 确保可选字段也使用安全获取和转换
+            x_mm: $("#s-x")?.value ? +$("#s-x").value : undefined,
+            y_mm: $("#s-y")?.value ? +$("#s-y").value : undefined,
+            height_mm: $("#s-h")?.value ? +$("#s-h").value : undefined,
+            status: $("#s-st")?.value, // status 和 note 可能是 null/undefined
+            note: $("#s-note")?.value || null
+        };
+
+        // 4. 发送 API 请求并刷新
+        await api("/api/shelves","POST",body);
+        alert("新建成功"); // 替换 alert 为 setText 更好
+        await loadShelves();
+    }catch(e){
+        alert("新建失败: " + (e.message || e));
+    }
+}
   async function updateShelf(){
     try{
       const id = +$("#s-id").value; if(!id) return alert("请输入 shelf_id");
