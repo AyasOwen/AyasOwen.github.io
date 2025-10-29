@@ -456,12 +456,12 @@
     $("#btnLogout") && ($("#btnLogout").onclick = WH.logout);
 
     // 默认打开
-    switchTab("shelves");
+    await switchTab("shelves");
   }
 
   document.addEventListener('DOMContentLoaded', mount);
 
-  function switchTab(name){
+  async function switchTab(name){
     $$("#tabs .data-tab").forEach(b => b.classList.toggle("active", b.getAttribute("data-tab") === name));
 
     $$(".tab-panel").forEach(p => p.style.display = (p.id === ("tab-" + name)) ? "" : "none");
@@ -469,8 +469,9 @@
     if(name === "shelf_inventory") loadInventoryAll();
     if(name === "tasks") loadTasks();
     if(name === "shelf_observations") loadObs();
+
     if(name === "users"){
-      if (WH.guardUsersTab()) loadUsers();
+      if (await WH.guardUsersTab()) loadUsers(); // 必须使用 await
     }
   }
 
