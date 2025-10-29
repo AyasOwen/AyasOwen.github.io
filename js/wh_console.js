@@ -68,7 +68,7 @@
       const body = {
         code: $("#s-code").value.trim(),
         row_idx: +$("#s-row").value, col_idx: +$("#s-col").value,
-        capacity: +$("#s-cap").value,
+        capacity: +$("#s-limit").value,
         x_mm: $("#s-x").value? +$("#s-x").value : undefined,
         y_mm: $("#s-y").value? +$("#s-y").value : undefined,
         height_mm: $("#s-h").value? +$("#s-h").value : undefined,
@@ -295,6 +295,46 @@
       await loadUsers(true);
     }catch(e){ alert("创建失败: " + (e.message || e)); }
   }
+
+  // ====== Users（新增 updateUser 和 delUser 定义） ======
+
+  // 根据 console.pug 中 input#u-id, input#u-name, select#u-role, select#u-status 定义
+  async function updateUser(){
+    setText($("#u-msg"), "");
+    try{
+      const uid = +$("#u-id").value;
+      if(!uid) return alert("请输入 user_id 进行更新");
+
+      const body = {};
+      // 只有填写了的字段才进行更新
+      if($("#u-pass").value) body.password = $("#u-pass").value;
+      if($("#u-role").value) body.role = $("#u-role").value;
+      if($("#u-status").value) body.status = $("#u-status").value;
+
+      if (Object.keys(body).length === 0) return alert("请输入要更新的字段");
+
+      await api(`/api/users/${uid}`,"PATCH",body);
+      alert(`用户 ${uid} 更新成功`);
+      await loadUsers();
+    }catch(e){ setText($("#u-msg"), String(e.message || e), "error"); }
+  }
+
+  async function delUser(){
+    setText($("#u-msg"), "");
+    try{
+      const uid = +$("#u-id").value;
+      if(!uid) return alert("请输入 user_id 进行删除");
+
+      if(!confirm(`确认删除用户 ${uid} 吗？`)) return;
+
+      await api(`/api/users/${uid}`,"DELETE"); // 假设后端 API 是 DELETE /api/users/<uid>
+      alert(`用户 ${uid} 删除成功`);
+      // 清空输入框
+      $("#u-id").value = "";
+      await loadUsers();
+    }catch(e){ setText($("#u-msg"), String(e.message || e), "error"); }
+  }
+
   async function loadUsersGuarded(){
     const ok = await guardUsersTab(); //
     if(!ok) return alert("口令错误，无法查看 Users");
@@ -404,6 +444,7 @@
     }
     // Users
     if(isAdmin){
+  // 【只绑定搜索/过滤，不绑定 loadUsersGuarded 或 #u-btn-load】
       $("#u-btn-search") && ($("#u-btn-search").onclick = loadUsers);
       $("#u-btn-apply") && ($("#u-btn-apply").onclick  = loadUsers);
 
@@ -412,8 +453,6 @@
       $("#u-btn-delete") && ($("#u-btn-delete").onclick = delUser);
     }
     // Logout
-    const logoutBtn = $("#btnLogout");
-    if (logoutBtn) logoutBtn.onclick = WH.logout;
     $("#btnLogout") && ($("#btnLogout").onclick = WH.logout);
 
     // 默认打开
@@ -430,7 +469,9 @@
     if(name === "shelf_inventory") loadInventoryAll();
     if(name === "tasks") loadTasks();
     if(name === "shelf_observations") loadObs();
-    if(name === "users") loadUsersGuarded();
+    if(name === "users"){
+      if (WH.guardUsersTab()) loadUsers();
+    }
   }
 
   // mount on DOM ready
